@@ -45,7 +45,6 @@ var MaskedInput = (function () {
     ParsedMask.prototype.try = function (text) {
         var result = '';
         var optionals = [];
-        var iteration = 0;
         
         text = text.split('');
         while (text.length) {
@@ -67,7 +66,7 @@ var MaskedInput = (function () {
                     } else {
                         optionals.push({
                             letter: node.letter,
-                            shift: iteration
+                            shift: result.length - 1
                         });
                     }
                 } else if (node.isAny) {
@@ -87,7 +86,6 @@ var MaskedInput = (function () {
                     return null;
                 }
             }
-            iteration++;
         }
         return {
             text: result,
@@ -472,34 +470,41 @@ var MaskedInput = (function () {
     MaskedInput.prototype.getSelectionBounds = function () {
         var start, stop;
         var opts = this.currentMaskData ? this.currentMaskData.optionals : [];
+        var val = this.currentMaskData ? this.currentMaskData.text : [];
         
         console.log(this.currentMaskData);
 
         /**
          * Посчитать количество опциональных символов которых нет в значении в определенном диапазоне
          * @param optionals
-         * @param value
          * @param shift
          * @return {int}
          */
-        function getoptionLettersCount(optionals, value, shift) {
+        function getoptionLettersCount(optionals, shift) {
             var result = 0;
             
-            if (value) {
-                value = value.split('');
-                for (var i = 0; i <= shift; ++i) {
-                    for (var j = 0; j < optionals.length; ++j) {
-                        var item = optionals[j];
+            for (var i = 0; i < shift; ++i) {
+                for (var j = 0; j < optionals.length; ++j) {
+                    var item = optionals[j];
                         
-                        if (item.shift == i) {
-                            if (value[i] != item.letter) {
-                                result++;
-                            }
-                        }
+                    if (item.shift == i) {
+                        result++;
                     }
                 }
             }
             return result;
+        }
+        
+        /**
+         * Проверить значение и вернуть 0, если значене меньше нуля, в противном случае вернуть значение
+         * @param val
+         * @return {*}
+         */
+        function positioveOrZero(val) {
+            if (val < 0) { 
+                return 0;
+            }
+            return val;
         }
 
         if (this.domElement.setSelectionRange) {
@@ -509,8 +514,8 @@ var MaskedInput = (function () {
             throw "not implemented";
         }
         return {
-            start: start - getoptionLettersCount(opts, this.value, start),
-            stop: stop - getoptionLettersCount(opts, this.value, stop)
+            start: positioveOrZero(start - getoptionLettersCount(opts, start)),
+            stop: positioveOrZero(stop - getoptionLettersCount(opts, stop))
         };
     };
 
