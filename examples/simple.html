@@ -9,7 +9,19 @@
         <script>
             (function () {
 
-                (new MaskedInput(document.getElementById('input')));
+                (new MaskedInput({
+                    domElement: document.getElementById('input'),
+                    masks: [
+                        {
+                            mask: '+7 (###) ### ## ##',
+                            data: {}
+                        },
+                        {
+                            mask: '+8 (###) ### ## ##',
+                            data: {}
+                        }
+                    ]
+                }));
 
             })();
         </script>
