@@ -38,6 +38,14 @@ var MaskedInput = (function () {
     ParsedMask.prototype.list = null;
     
     /**
+     * Форматируем маску
+     * @var text
+     */
+    ParsedMask.prototype.printf = function (text) { 
+        return text;
+    }
+
+    /**
      * Заполнитьмаску
      * @param text
      * @return {object?}
@@ -46,49 +54,52 @@ var MaskedInput = (function () {
         var result = '';
         var optionals = [];
         
-        text = text.split('');
-        while (text.length) {
-            var letter = text.shift();
-            var matching = true;
-            
-            while (matching) {
-                var node = this.list[result.length];
-
-                if (!node) {
-                    // битая маска
-                    return null;
-                } else if (node.isOptional) {
-                    // опциональный символ
-                    result += node.letter;
-                    if (node.letter == letter) {
-                        // но если он совпал - дальше не ищем
-                        matching = false;
-                    } else {
-                        optionals.push({
-                            letter: node.letter,
-                            shift: result.length - 1
-                        });
-                    }
-                } else if (node.isAny) {
-                    // "любой" символ
-                    if (this.allow.test(letter)) {
+        if (text.length) {
+            // текст есть - маскируем его
+            text = text.split('');
+            while (text.length) {
+                var letter = text.shift();
+                var matching = true;
+                
+                while (matching) {
+                    var node = this.list[result.length];
+                    
+                    if (!node) {
+                        // битая маска
+                        return null;
+                    } else if (node.isOptional) {
+                        // опциональный символ
+                        result += node.letter;
+                        if (node.letter == letter) {
+                            // но если он совпал - дальше не ищем
+                            matching = false;
+                        } else {
+                            optionals.push({
+                                letter: node.letter,
+                                shift: result.length - 1
+                            });
+                        }
+                    } else if (node.isAny) {
+                        // "любой" символ
+                        if (this.allow.test(letter)) {
+                            result += letter;
+                            matching = false;
+                        } else {
+                            // ошибка заполенения маски: ошибочный символ
+                            return null;
+                        }
+                    } else if (node.letter && node.letter == letter) {
                         result += letter;
                         matching = false;
                     } else {
-                        // ошибка заполенения маски: ошибочный символ
+                        // ошибка заполнения маски
                         return null;
                     }
-                } else if (node.letter && node.letter == letter) {
-                    result += letter;
-                    matching = false;
-                } else {
-                    // ошибка заполнения маски
-                    return null;
                 }
             }
         }
         return {
-            text: result,
+            text: this.printf(result),
             optionals: optionals,
             mask: this
         };
@@ -209,6 +220,12 @@ var MaskedInput = (function () {
      * @var {Object?}
      */
     MaskedInput.prototype.currentMaskData = null;
+    
+    /**
+     * Последнее "выделение"
+     * @var {Object}
+     */
+    MaskedInput.prototype.lastSelection = {};
 
     /**
      * Добавить обраотчики событий
@@ -378,7 +395,6 @@ var MaskedInput = (function () {
 
             if (value) {
                 this.currentMaskData = value;
-                console.log(this.currentMaskData);
                 return value.text;
             }
         }
@@ -388,9 +404,42 @@ var MaskedInput = (function () {
     /**
      * Применить значение маски к инпуту
      * @param value
+     * @param action
      */
-    MaskedInput.prototype.applyMaskValue = function (value) { 
+    MaskedInput.prototype.applyMaskValue = function (value, action) {
+        var diff;
+
+        switch (action.action) {
+            case this.actions.SET_TEXT:
+            case this.actions.INSERT_TEXT:
+                // TODO: ошибки при вставке текста в центр
+                if (this.lastSelection.start == this.domElement.value.length) {
+                    diff = value.length - this.domElement.value.length;
+                } else {
+                    if ((this.lastSelection.stop - this.lastSelection.start) <= 1) {
+                        diff = 1;
+                    } else {
+                        diff = action.text.length;
+                    }
+                }
+
+                break;
+            case this.actions.DELETE_PREVIOUS:
+                if ((this.lastSelection.stop - this.lastSelection.start) <= 1) {
+                    // TODO: проверить под всеми браузерами
+                    // удали без выделение - нужно сдвинуть на один символ
+                    // если удаляли с выделением - нужно оставить каретку наместе
+                    diff = -1;
+                } else { 
+                    diff = 0;
+                }
+                break;
+            default:
+                diff = 0;
+                break;
+        }
         this.domElement.value = value;
+        this.setCaretPosition(this.lastSelection.start + diff);
     }
 
     /**
@@ -409,7 +458,7 @@ var MaskedInput = (function () {
                 e.preventDefault();
             }
             if (maskValue) {
-                this.applyMaskValue(maskValue);
+                this.applyMaskValue(maskValue, action);
                 this.value = value;
             }
         } else {
@@ -462,6 +511,25 @@ var MaskedInput = (function () {
         console.log(bound, action, this.value, value);
         return value;
     }
+    
+    /**
+     * Установить положение каретки
+     * TODO: проверить под всеми браузерами
+     * @param position
+     */
+    MaskedInput.prototype.setCaretPosition = function (position) {
+        if (this.domElement.setSelectionRange) {
+            this.domElement.focus();
+            this.domElement.setSelectionRange(position, position);
+        } else if (this.domElement.createTextRange) {
+            var range = this.domElement.createTextRange();
+
+            range.collapse(true);
+            range.moveEnd('character', position);
+            range.moveStart('character', position);
+            range.select();
+        }
+    }
 
     /**
      * Получить позицию каретки
@@ -510,6 +578,10 @@ var MaskedInput = (function () {
         } else {
             throw "not implemented";
         }
+        this.lastSelection = {
+            start: start,
+            stop: stop
+        };
         return {
             start: positioveOrZero(start - getoptionLettersCount(opts, start)),
             stop: positioveOrZero(stop - getoptionLettersCount(opts, stop))
