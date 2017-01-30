@@ -1,4 +1,6 @@
 var MaskedInput = (function () {
+    
+    //#region MaskedInput
 
     /**
      * Инпут с маской
@@ -56,15 +58,15 @@ var MaskedInput = (function () {
      * Добавить обраотчики событий
      */
     MaskedInput.prototype.bind = function () {
-        this.attachEvent("Keypress");
-        this.attachEvent("Keydown");
-        this.attachEvent("Keyup");
-        this.attachEvent("Drag", true); // внутри "маски" ничего перетаскивать нельзя
-        this.attachEvent("Dragstart", true); // внутри "маски" ничего перетаскивать нельзя
-        this.attachEvent("Drop");
-        this.attachEvent("Cut");
-        this.attachEvent("Paste");
-        this.attachEvent("Reset");
+        this.attachEvent("keypress");
+        this.attachEvent("keydown");
+        this.attachEvent("keyup");
+        this.attachEvent("drag", true); // внутри "маски" ничего перетаскивать нельзя
+        this.attachEvent("dragstart", true); // внутри "маски" ничего перетаскивать нельзя
+        this.attachEvent("drop");
+        this.attachEvent("cut");
+        this.attachEvent("paste");
+        this.attachEvent("reset");
     }
 
     /**
@@ -74,6 +76,15 @@ var MaskedInput = (function () {
      */
     MaskedInput.prototype.attachEvent = function (eventName, prevent) {
         var that = this;
+        
+        /**
+         * Привести первую букву строки к верхнему регистру
+         * @param str
+         * @return {string}
+         */
+        function ucfirst(str) { 
+            return str.substr(0, 1).toUpperCase() + str.substr(1);
+        }
 
         if (!this.attachedEvents[eventName]) {
             this.attachedEvents[eventName] = function (e) {
@@ -81,14 +92,14 @@ var MaskedInput = (function () {
                     e.preventDefault();
                     return false;
                 }
-                return that["onDomElementValueEvent" + eventName].apply(that, [e]);
+                return that["onDomElementValueEvent" + ucfirst(eventName)].apply(that, [e]);
             }
         }
 
         if (this.domElement.addEventListener) {
-            this.domElement.addEventListener(eventName.toLowerCase(), this.attachedEvents[eventName], false);
+            this.domElement.addEventListener(eventName, this.attachedEvents[eventName], false);
         } else if (this.domElement.attachEvent) {
-            this.attachEvent("on" + eventName.toLowerCase(), this.attachedEvents[eventName]);
+            this.attachEvent("on" + eventName, this.attachedEvents[eventName]);
         }
     };
 
@@ -316,6 +327,8 @@ var MaskedInput = (function () {
         }
         return text;
     }
+    
+    //#endregion
 
     return MaskedInput;
 
