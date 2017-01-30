@@ -470,9 +470,6 @@ var MaskedInput = (function () {
     MaskedInput.prototype.getSelectionBounds = function () {
         var start, stop;
         var opts = this.currentMaskData ? this.currentMaskData.optionals : [];
-        var val = this.currentMaskData ? this.currentMaskData.text : [];
-        
-        console.log(this.currentMaskData);
 
         /**
          * Посчитать количество опциональных символов которых нет в значении в определенном диапазоне
