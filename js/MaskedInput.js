@@ -1,5 +1,47 @@
 var MaskedInput = (function () {
-    
+
+    //#region ParsedMaskMatch
+
+    /**
+     * Результат поиска маски
+     * @param text
+     * @param maskedText
+     * @param optionalSymbols
+     * @param mask
+     */
+    function ParsedMaskMatch(text, maskedText, optionalSymbols, mask) {
+        this.text = text;
+        this.maskedText = maskedText;
+        this.optionalSymbols = optionalSymbols;
+        this.mask = mask;
+    }
+
+    /**
+     * Исходный текст
+     * @var {string?}
+     */
+    ParsedMaskMatch.prototype.text = null;
+
+    /**
+     * Текст с наложенной маской
+     * @var {string?}
+     */
+    ParsedMaskMatch.prototype.maskedText = null;
+
+    /**
+     * Список опциональных символов в {maskedText}
+     * @var {array}
+     */
+    ParsedMaskMatch.prototype.optionalSymbols = null;
+
+    /**
+     * Ссылка на маску
+     * @var {ParsedMask}
+     */
+    ParsedMaskMatch.prototype.mask = null;
+
+    //#endregion
+
     //#region ParsedMask
     
     function ParsedMask(data) {
@@ -48,11 +90,12 @@ var MaskedInput = (function () {
     /**
      * Заполнитьмаску
      * @param text
-     * @return {object?}
+     * @return {ParsedMaskMatch?}
      */
     ParsedMask.prototype.try = function (text) {
         var result = '';
         var optionals = [];
+        var source = text;
         
         if (text.length) {
             // текст есть - маскируем его
@@ -98,11 +141,7 @@ var MaskedInput = (function () {
                 }
             }
         }
-        return {
-            text: this.printf(result),
-            optionals: optionals,
-            mask: this
-        };
+        return new ParsedMaskMatch(source, result, optionals, this);
     }
 
     //#endregion
@@ -141,7 +180,7 @@ var MaskedInput = (function () {
      * Попытаться заполнить маску
      * TODO: наследование
      * @param text
-     * @return {object?}
+     * @return {ParsedMaskMatch?}
      */
     PhoneMask.prototype.try = function (text) { 
         return this.mask.try(text);
@@ -217,9 +256,9 @@ var MaskedInput = (function () {
     
     /**
      * Данные текущей маски
-     * @var {Object?}
+     * @var {ParsedMaskMatch?}
      */
-    MaskedInput.prototype.currentMaskData = null;
+    MaskedInput.prototype.maskMatch = null;
     
     /**
      * Последнее "выделение"
@@ -387,27 +426,28 @@ var MaskedInput = (function () {
     /**
      * Найти маску, подходящую под значение
      * @param text
-     * @return {string}
+     * @return {ParsedMaskMatch?}
      */
-    MaskedInput.prototype.findMaskValue = function (text) {
+    MaskedInput.prototype.findMaskMatch = function (text) {
         for (var i = 0; i < this.masks.length; ++i) {
-            var value = this.masks[i].try(text);
+            var match = this.masks[i].try(text);
 
-            if (value) {
-                this.currentMaskData = value;
-                return value.text;
+            if (match) {
+                this.maskMatch = match;
+                return match;
             }
         }
-        return '';
+        return null;
     }
     
     /**
      * Применить значение маски к инпуту
-     * @param value
+     * @param maskMatch
      * @param action
      */
-    MaskedInput.prototype.applyMaskValue = function (value, action) {
+    MaskedInput.prototype.applyMaskValue = function (maskMatch, action) {
         var diff;
+        var value = maskMatch.maskedText;
 
         switch (action.action) {
             case this.actions.SET_TEXT:
@@ -452,13 +492,13 @@ var MaskedInput = (function () {
         
         // TODO: маска должна понимать пустые значения
         if (value) {
-            var maskValue = this.findMaskValue(value);
+            var maskMatch = this.findMaskMatch(value);
             
             if (e) {
                 e.preventDefault();
             }
-            if (maskValue) {
-                this.applyMaskValue(maskValue, action);
+            if (maskMatch) {
+                this.applyMaskValue(maskMatch, action);
                 this.value = value;
             }
         } else {
@@ -537,7 +577,7 @@ var MaskedInput = (function () {
      */
     MaskedInput.prototype.getSelectionBounds = function () {
         var start, stop;
-        var opts = this.currentMaskData ? this.currentMaskData.optionals : [];
+        var opts = this.maskMatch ? this.maskMatch.optionalSymbols : [];
 
         /**
          * Посчитать количество опциональных символов которых нет в значении в определенном диапазоне
