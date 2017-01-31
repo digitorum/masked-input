@@ -433,7 +433,6 @@ var MaskedInput = (function () {
             var match = this.masks[i].try(text);
 
             if (match) {
-                this.maskMatch = match;
                 return match;
             }
         }
@@ -500,6 +499,7 @@ var MaskedInput = (function () {
             if (maskMatch) {
                 this.applyMaskValue(maskMatch, action);
                 this.value = value;
+                this.maskMatch = maskMatch;
             }
         } else {
             this.value = value;
