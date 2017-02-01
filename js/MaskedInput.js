@@ -450,12 +450,15 @@ var MaskedInput = (function () {
      * @oaram eventName
      * @return {*}
      */
-    MaskedInput.prototype.inputOrForm = function(eventName) {
+    MaskedInput.prototype.getDomNodeForEvent = function(eventName) {
         if (eventName == 'reset') {
             var node = this.domElement;
 
             while (node.nodeName != 'FORM') {
                 node = node.parentElement;
+                if (node == null) { 
+                    return node;
+                }
             }
             return node;
         }
@@ -469,8 +472,8 @@ var MaskedInput = (function () {
      */
     MaskedInput.prototype.attachEvent = function (eventName, prevent) {
         var that = this;
-        var node = this.inputOrForm(eventName);
-        
+        var node = this.getDomNodeForEvent(eventName);
+
         /**
          * Привести первую букву строки к верхнему регистру
          * @param str
@@ -479,7 +482,10 @@ var MaskedInput = (function () {
         function ucfirst(str) { 
             return str.substr(0, 1).toUpperCase() + str.substr(1);
         }
-
+        
+        if (node == null) {
+            return;
+        }
         if (!this.attachedEvents[eventName]) {
             this.attachedEvents[eventName] = function (e) {
                 if (prevent) {
@@ -502,8 +508,11 @@ var MaskedInput = (function () {
      * @param eventName
      */
     MaskedInput.prototype.detachEvent = function (eventName) {
-        var node = this.inputOrForm(eventName);
+        var node = this.getDomNodeForEvent(eventName);
         
+        if (node == null) {
+            return;
+        }
         if (this.attachedEvents[eventName]) {
             if (node.removeEventListener) {
                 node.removeEventListener(eventName, this.attachedEvents[eventName], false);
