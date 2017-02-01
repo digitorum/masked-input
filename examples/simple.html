@@ -1,11 +1,17 @@
 <html>
     <head>
         <script src="../js/MaskedInput.js"></script>
+        <style>
+            label {
+                display: block;
+            }
+        </style>
     </head>
     <body>
-        <input type="text" id="input">
-        <p>Некий текст</p>
-        <p>71234567890</p>
+        <form action="#" method="get">
+            <label>Некий текст / 71234567890</label>
+            <input type="text" id="input" value="7123">
+        </form>
 
         <script>
             (function () {

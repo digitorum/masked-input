@@ -340,15 +340,15 @@ var MaskedInput = (function () {
     function MaskedInput(options) {
         this.caret = new Caret(this);
         this.domElement = options.domElement;
-        this.updateValue({
-            action: this.actions.SET_TEXT,
-            text: this.domElement.value
-        });
         if (options.masks) {
             for (var i = 0; i < options.masks.length; ++i) { 
                 this.masks.push(new PhoneMask(options.masks[i]));
             }
         }
+        this.updateValue({
+            action: this.actions.SET_TEXT,
+            text: this.domElement.value
+        });
         this.bind();
     }
     
