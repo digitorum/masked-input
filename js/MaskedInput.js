@@ -429,6 +429,38 @@ var MaskedInput = (function () {
         this.attachEvent("paste");
         this.attachEvent("reset");
     }
+    
+    /**
+     * Удалить обраотчики событий
+     */
+    MaskedInput.prototype.unbind = function () {
+        this.detachEvent("keypress");
+        this.detachEvent("keydown");
+        this.detachEvent("keyup");
+        this.detachEvent("drag");
+        this.detachEvent("dragstart");
+        this.detachEvent("drop");
+        this.detachEvent("cut");
+        this.detachEvent("paste");
+        this.detachEvent("reset");
+    }
+    
+    /**
+     * Получить инпут или форму которой принадлежит инпут
+     * @oaram eventName
+     * @return {*}
+     */
+    MaskedInput.prototype.inputOrForm = function(eventName) {
+        if (eventName == 'reset') {
+            var node = this.domElement;
+
+            while (node.nodeName != 'FORM') {
+                node = node.parentElement;
+            }
+            return node;
+        }
+        return this.domElement;
+    }
 
     /**
      * Прилепить событие к DOM элементу
@@ -437,6 +469,7 @@ var MaskedInput = (function () {
      */
     MaskedInput.prototype.attachEvent = function (eventName, prevent) {
         var that = this;
+        var node = this.inputOrForm(eventName);
         
         /**
          * Привести первую букву строки к верхнему регистру
@@ -457,12 +490,28 @@ var MaskedInput = (function () {
             }
         }
 
-        if (this.domElement.addEventListener) {
-            this.domElement.addEventListener(eventName, this.attachedEvents[eventName], false);
-        } else if (this.domElement.attachEvent) {
-            this.attachEvent("on" + eventName, this.attachedEvents[eventName]);
+        if (node.addEventListener) {
+            node.addEventListener(eventName, this.attachedEvents[eventName], false);
+        } else if (node.attachEvent) {
+            node.attachEvent("on" + eventName, this.attachedEvents[eventName]);
         }
     };
+    
+    /**
+     * Отлепить обработчик события от DOM элемента
+     * @param eventName
+     */
+    MaskedInput.prototype.detachEvent = function (eventName) {
+        var node = this.inputOrForm(eventName);
+        
+        if (this.attachedEvents[eventName]) {
+            if (node.removeEventListener) {
+                node.removeEventListener(eventName, this.attachedEvents[eventName], false);
+            } else if (node.detachEvent) {
+                node.detachEvent("on" + eventName, this.attachedEvents[eventName]);
+            }
+        }
+    }
 
     /**
      * Событие "ondrop"
@@ -514,10 +563,14 @@ var MaskedInput = (function () {
      * @param e
      */
     MaskedInput.prototype.onDomElementValueEventReset = function (e) {
-        this.updateValue({
-            action: this.actions.SET_TEXT,
-            text: this.domElement.value
-        }, e);
+        var that = this;
+
+        setTimeout(function () {
+            that.updateValue({
+                action: that.actions.SET_TEXT,
+                text: that.domElement.value
+            }, e);
+        }, 0)
     };
 
     /**
@@ -694,7 +747,7 @@ var MaskedInput = (function () {
         } catch (e) {
             console.log(e);
         }
-        console.log(bound, action, this.value, value);
+        //console.log(bound, action, this.value, value);
         return value;
     }
     
