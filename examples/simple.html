@@ -1,0 +1,37 @@
+<html>
+    <head>
+        <script src="../js/MaskedInput.js"></script>
+        <style>
+            label {
+                display: block;
+            }
+        </style>
+    </head>
+    <body>
+        <form action="#" method="get">
+            <label>Некий текст / 71234567890</label>
+            <input type="text" id="input" value="7123">
+            <input type="reset" value="reset">
+        </form>
+
+        <script>
+            (function () {
+
+                (new MaskedInput({
+                    domElement: document.getElementById('input'),
+                    masks: [
+                        {
+                            mask: '+7 (###) ### ## ##',
+                            data: {}
+                        },
+                        {
+                            mask: '+8 (###) ### ## ##',
+                            data: {}
+                        }
+                    ]
+                }));
+
+            })();
+        </script>
+    </body>
+</html>
