@@ -600,7 +600,7 @@ var MaskedInput = (function () {
         switch (action.action) {
             case this.actions.SET_TEXT:
             case this.actions.INSERT_TEXT:
-                if (this.caretData.original.start == this.domElement.value.length) {
+                if (this.caretData.start == this.value.length) {
                     // вставляем данные в конец текста
                     position = maskMatch.maskedText.length;
                 } else {
