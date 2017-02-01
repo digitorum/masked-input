@@ -1,4 +1,144 @@
 var MaskedInput = (function () {
+    
+    //#region Caret and CaretData
+    
+    //#region CaretData
+
+    /**
+     * Данные положения каретки
+     * @constructor
+     */
+    function CaretData() {
+        this.original = {
+            start: 0,
+            stop: 0
+        };
+    }
+    
+    /**
+     * "Оригинальное" положение каретки в инпуте
+     * @var {object?}
+     */
+    CaretData.prototype.original = null;
+    
+    /**
+     * Положение каретки без учета маски
+     * @var {int}
+     */
+    CaretData.prototype.start = 0;
+
+    /**
+     * Положение каретки без учета маски
+     * @var {int}
+     */
+    CaretData.prototype.stop = 0;
+    
+    //#endregion
+    
+    //#region Caret
+
+    /**
+     * "Хэлпер" для работы с кареткой и селекшенами
+     * @constructor
+     */
+    function Caret() { }
+    
+    /**
+     * Посчитать количество опциональных символов которых нет в значении в определенном диапазоне
+     * @param optionals
+     * @param shift
+     * @return {int}
+     */
+    Caret.prototype.getOptionalSymbolsCount = function(optionals, shift) {
+        var result = 0;
+            
+        for (var i = 0; i < shift; ++i) {
+            for (var j = 0; j < optionals.length; ++j) {
+                var item = optionals[j];
+                    
+                if (item.shift == i) {
+                    result++;
+                }
+            }
+        }
+        return result;
+    }
+    
+    /**
+     * Проверить значение и вернуть 0, если значене меньше нуля, в противном случае вернуть значение
+     * @param val
+     * @return {*}
+     */
+    Caret.prototype.positioveOrZero = function (val) {
+        if (val < 0) {
+            return 0;
+        }
+        return val;
+    }
+
+    /**
+     * Получить позицию каретки
+     * @param input
+     * @return {CaretData}
+     */
+    Caret.prototype.getSelectionBounds = function (input) {
+        var start, stop;
+        var opts = input.maskMatch ? input.maskMatch.optionalSymbols : [];
+        var data = new CaretData();
+
+        if (input.domElement.setSelectionRange) {
+            start = input.domElement.selectionStart;
+            stop = input.domElement.selectionEnd;
+        } else {
+            throw "not implemented";
+        }
+        data.original.start = start;
+        data.original.stop = stop;
+        data.start = this.positioveOrZero(start - this.getOptionalSymbolsCount(opts, start));
+        data.stop = this.positioveOrZero(stop - this.getOptionalSymbolsCount(opts, stop));
+        return data;
+    };
+    
+    /**
+     * Установить положение каретки
+     * TODO: проверить под всеми браузерами
+     * @param input
+     * @param position
+     */
+    Caret.prototype.setPosition = function (input, position) {
+        if (input.domElement.setSelectionRange) {
+            input.domElement.focus();
+            input.domElement.setSelectionRange(position, position);
+        } else if (this.domElement.createTextRange) {
+            var range = input.domElement.createTextRange();
+            
+            range.collapse(true);
+            range.moveEnd('character', position);
+            range.moveStart('character', position);
+            range.select();
+        }
+    }
+
+    /**
+     * Получить выделенный текст
+     * @return {Object}
+     */
+    Caret.prototype.getSelectionValue = function () {
+        var text = '';
+        
+        if (window.getSelection) {
+            text = window.getSelection().toString()
+        } else {
+            throw "not implemented";
+        }
+        return text;
+    }
+
+    //#endregion
+
+    //#endregion
+    
+    //#region ParsedMaskMatch and ParsedMask
 
     //#region ParsedMaskMatch
 
@@ -145,6 +285,8 @@ var MaskedInput = (function () {
     }
 
     //#endregion
+    
+    //#endregion
 
     //#region PhoneMask
     
@@ -196,6 +338,7 @@ var MaskedInput = (function () {
      * @constructor
      */
     function MaskedInput(options) {
+        this.caret = new Caret(this);
         this.domElement = options.domElement;
         this.updateValue({
             action: this.actions.SET_TEXT,
@@ -209,6 +352,12 @@ var MaskedInput = (function () {
         this.bind();
     }
     
+    /**
+     * Хэлпер раблоты с указателем
+     * @var {Caret}
+     */
+    MaskedInput.prototype.caret = null;
+
     /**
      * Массив масок
      * @var {array}
@@ -262,9 +411,9 @@ var MaskedInput = (function () {
     
     /**
      * Последнее "выделение"
-     * @var {Object}
+     * @var {CaretData?}
      */
-    MaskedInput.prototype.lastSelection = {};
+    MaskedInput.prototype.caretData = null;
 
     /**
      * Добавить обраотчики событий
@@ -325,7 +474,7 @@ var MaskedInput = (function () {
         setTimeout(function () {
             that.updateValue({
                 action: that.actions.INSERT_TEXT,
-                text: that.getSelectionValue()
+                text: that.caret.getSelectionValue()
             });
         }, 0);
     };
@@ -445,40 +594,36 @@ var MaskedInput = (function () {
      * @param action
      */
     MaskedInput.prototype.applyMaskValue = function (maskMatch, action) {
-        var diff;
         var value = maskMatch.maskedText;
+        var position = null;
 
         switch (action.action) {
             case this.actions.SET_TEXT:
             case this.actions.INSERT_TEXT:
-                // TODO: ошибки при вставке текста в центр
-                if (this.lastSelection.start == this.domElement.value.length) {
-                    diff = value.length - this.domElement.value.length;
+                if (this.caretData.original.start == this.domElement.value.length) {
+                    // вставляем данные в конец текста
+                    position = maskMatch.maskedText.length;
                 } else {
-                    if ((this.lastSelection.stop - this.lastSelection.start) <= 1) {
-                        diff = 1;
-                    } else {
-                        diff = action.text.length;
-                    }
+                    // вставляем данные в середину текста
+                    // получаем сроку, которая идет перед кареткой и накладываем на нее маску - длина получившегося значения и будет положение каретки
+                    position = this.maskMatch.mask.try(this.value.substr(0, this.caretData.start + action.text.length)).maskedText.length;
                 }
 
                 break;
             case this.actions.DELETE_PREVIOUS:
-                if ((this.lastSelection.stop - this.lastSelection.start) <= 1) {
-                    // TODO: проверить под всеми браузерами
-                    // удали без выделение - нужно сдвинуть на один символ
-                    // если удаляли с выделением - нужно оставить каретку наместе
-                    diff = -1;
-                } else { 
-                    diff = 0;
+                if ((this.caretData.stop - this.caretData.start) <= 1) {
+                    // удаление без выделения - нужно сдвинуть на один символ
+                    // если удаляли с выделением - нужно оставить каретку на месте
+                    position = this.maskMatch.mask.try(this.value.substr(0, this.caretData.start - 1)).maskedText.length;
                 }
-                break;
-            default:
-                diff = 0;
                 break;
         }
         this.domElement.value = value;
-        this.setCaretPosition(this.lastSelection.start + diff);
+        if (position !== null) {
+            this.caret.setPosition(this, position);
+        } else {
+            this.caret.setPosition(this, this.caretData.original.start);
+        }
     }
 
     /**
@@ -497,9 +642,9 @@ var MaskedInput = (function () {
                 e.preventDefault();
             }
             if (maskMatch) {
-                this.applyMaskValue(maskMatch, action);
                 this.value = value;
                 this.maskMatch = maskMatch;
+                this.applyMaskValue(maskMatch, action);
             }
         } else {
             this.value = value;
@@ -512,9 +657,10 @@ var MaskedInput = (function () {
      * @return {String}
      */
     MaskedInput.prototype.getNewValue = function (action) {
-        var bound = this.getSelectionBounds();
+        var bound = this.caret.getSelectionBounds(this);
         var value = '';
-
+        
+        this.caretData = bound;
         try {
             switch (action.action) {
                 case this.actions.SET_TEXT:
@@ -550,97 +696,6 @@ var MaskedInput = (function () {
         }
         console.log(bound, action, this.value, value);
         return value;
-    }
-    
-    /**
-     * Установить положение каретки
-     * TODO: проверить под всеми браузерами
-     * @param position
-     */
-    MaskedInput.prototype.setCaretPosition = function (position) {
-        if (this.domElement.setSelectionRange) {
-            this.domElement.focus();
-            this.domElement.setSelectionRange(position, position);
-        } else if (this.domElement.createTextRange) {
-            var range = this.domElement.createTextRange();
-
-            range.collapse(true);
-            range.moveEnd('character', position);
-            range.moveStart('character', position);
-            range.select();
-        }
-    }
-
-    /**
-     * Получить позицию каретки
-     * @return {Object}
-     */
-    MaskedInput.prototype.getSelectionBounds = function () {
-        var start, stop;
-        var opts = this.maskMatch ? this.maskMatch.optionalSymbols : [];
-
-        /**
-         * Посчитать количество опциональных символов которых нет в значении в определенном диапазоне
-         * @param optionals
-         * @param shift
-         * @return {int}
-         */
-        function getoptionLettersCount(optionals, shift) {
-            var result = 0;
-            
-            for (var i = 0; i < shift; ++i) {
-                for (var j = 0; j < optionals.length; ++j) {
-                    var item = optionals[j];
-                        
-                    if (item.shift == i) {
-                        result++;
-                    }
-                }
-            }
-            return result;
-        }
-        
-        /**
-         * Проверить значение и вернуть 0, если значене меньше нуля, в противном случае вернуть значение
-         * @param val
-         * @return {*}
-         */
-        function positioveOrZero(val) {
-            if (val < 0) { 
-                return 0;
-            }
-            return val;
-        }
-
-        if (this.domElement.setSelectionRange) {
-            start = this.domElement.selectionStart;
-            stop = this.domElement.selectionEnd;
-        } else {
-            throw "not implemented";
-        }
-        this.lastSelection = {
-            start: start,
-            stop: stop
-        };
-        return {
-            start: positioveOrZero(start - getoptionLettersCount(opts, start)),
-            stop: positioveOrZero(stop - getoptionLettersCount(opts, stop))
-        };
-    };
-
-    /**
-     * Получить выделенный текст
-     * @return {Object}
-     */
-    MaskedInput.prototype.getSelectionValue = function () {
-        var text = '';
-
-        if (window.getSelection) {
-            text = window.getSelection().toString()
-        } else {
-            throw "not implemented";
-        }
-        return text;
     }
     
     //#endregion
