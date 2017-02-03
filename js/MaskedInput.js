@@ -215,7 +215,7 @@ var MaskedInput = (function () {
             if (letter == data.template) {
                 node.isAny = true;
                 this.needSymbolsCount++;
-            } else if (optional && optional.indexOf(letter) !== -1) { // TODO: IE8
+            } else if (optional && this.indexOf(optional, letter) !== -1) {
                 node.letter = letter;
                 node.isOptional = true;
             } else {
@@ -226,6 +226,24 @@ var MaskedInput = (function () {
         }
     }
     
+    /**
+     * Поиск в массиве. Поведение как у indexOf модерн барузеров
+     * @param arr
+     * @param item
+     * @return {int}
+     */
+    ParsedMask.prototype.indexOf = function (arr, item) {
+        if (arr.indexOf) { 
+            return arr.indexOf(item);
+        }
+        for (var i = 0, j = arr.length; i < j; i++) {
+            if (arr[i] === item) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     /**
      * Разрешенные символы в маске
      * @var {rexp?}
