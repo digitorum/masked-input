@@ -259,11 +259,11 @@ var MaskedInput = (function () {
     }
 
     /**
-     * Заполнитьмаску
+     * Заполнить маску
      * @param text
      * @return {ParsedMaskMatch?}
      */
-    ParsedMask.prototype.try = function (text) {
+    ParsedMask.prototype.attempt = function (text) {
         var result = '';
         var optionals = [];
         var source = text;
@@ -359,8 +359,8 @@ var MaskedInput = (function () {
      * @param text
      * @return {ParsedMaskMatch?}
      */
-    PhoneMask.prototype.try = function (text) { 
-        return this.mask.try(text);
+    PhoneMask.prototype.attempt = function (text) { 
+        return this.mask.attempt(text);
     }
     
     //#endregion
@@ -690,7 +690,7 @@ var MaskedInput = (function () {
      */
     MaskedInput.prototype.findMaskMatch = function (text) {
         for (var i = 0; i < this.masks.length; ++i) {
-            var match = this.masks[i].try(text);
+            var match = this.masks[i].attempt(text);
 
             if (match) {
                 return match;
@@ -717,7 +717,7 @@ var MaskedInput = (function () {
                 } else {
                     // вставляем данные в середину текста
                     // получаем сроку, которая идет перед кареткой и накладываем на нее маску - длина получившегося значения и будет положение каретки
-                    position = this.maskMatch.mask.try(this.value.substr(0, this.caretData.start + action.text.length)).maskedText.length;
+                    position = this.maskMatch.mask.attempt(this.value.substr(0, this.caretData.start + action.text.length)).maskedText.length;
                 }
 
                 break;
@@ -725,7 +725,7 @@ var MaskedInput = (function () {
                 if ((this.caretData.stop - this.caretData.start) <= 1) {
                     // удаление без выделения - нужно сдвинуть на один символ
                     // если удаляли с выделением - нужно оставить каретку на месте
-                    position = this.maskMatch.mask.try(this.value.substr(0, this.caretData.start - 1)).maskedText.length;
+                    position = this.maskMatch.mask.attempt(this.value.substr(0, this.caretData.start - 1)).maskedText.length;
                 }
                 break;
         }
