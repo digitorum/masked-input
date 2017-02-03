@@ -98,7 +98,20 @@ var MaskedInput = (function () {
         if (input.domElement.setSelectionRange) {
             start = input.domElement.selectionStart;
             stop = input.domElement.selectionEnd;
-        } else {
+        } else if (document.selection) {
+            var range = document.selection.createRange();
+
+            if (range.parentElement() === input) {
+                var bookmark = range.getBookmark();
+                var range = input.createTextRange();
+                range.moveToBookmark(bookmark);
+                var length = range.text.length;
+                range.collapse(true);
+                range.moveStart('character', -input.value.length);
+                start = range.text.length;
+                stop = start + length;
+            }
+        } else { 
             throw "not implemented";
         }
         data.original.start = start;
@@ -118,7 +131,7 @@ var MaskedInput = (function () {
         if (input.domElement.setSelectionRange) {
             input.domElement.focus();
             input.domElement.setSelectionRange(position, position);
-        } else if (this.domElement.createTextRange) {
+        } else if (input.createTextRange) {
             var range = input.domElement.createTextRange();
             
             range.collapse(true);
@@ -771,7 +784,7 @@ var MaskedInput = (function () {
         if (value) {
             var maskMatch = this.findMaskMatch(value);
             
-            if (e) {
+            if (e && e.preventDefault) {
                 e.preventDefault();
             }
             if (maskMatch) {
