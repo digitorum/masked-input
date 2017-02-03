@@ -1,5 +1,14 @@
 var MaskedInput = (function () {
     
+    //#region Utils
+
+    /**
+    * Заглушка
+    */
+    function noop() { };
+    
+    //#endregion
+
     //#region Caret and CaretData
     
     //#region CaretData
@@ -148,12 +157,14 @@ var MaskedInput = (function () {
      * @param maskedText
      * @param optionalSymbols
      * @param mask
+     * @param complete
      */
-    function ParsedMaskMatch(text, maskedText, optionalSymbols, mask) {
+    function ParsedMaskMatch(text, maskedText, optionalSymbols, mask, complete) {
         this.text = text;
         this.maskedText = maskedText;
         this.optionalSymbols = optionalSymbols;
         this.mask = mask;
+        this.complete = complete || false;
     }
 
     /**
@@ -173,6 +184,12 @@ var MaskedInput = (function () {
      * @var {array}
      */
     ParsedMaskMatch.prototype.optionalSymbols = null;
+    
+    /**
+     * Признак завершенности
+     * @var {bool}
+     */
+    ParsedMaskMatch.prototype.complete = false;
 
     /**
      * Ссылка на маску
@@ -188,6 +205,7 @@ var MaskedInput = (function () {
         var mask = data.mask.split('');
         var optional = data.optional ? data.optional : null;
         
+        this.data = data.data;
         this.allow = data.templateAllow;
         this.list = [];
         for (var i = 0; i < mask.length; ++i) {
@@ -196,13 +214,14 @@ var MaskedInput = (function () {
             
             if (letter == data.template) {
                 node.isAny = true;
+                this.needSymbolsCount++;
             } else if (optional && optional.indexOf(letter) !== -1) { // TODO: IE8
                 node.letter = letter;
                 node.isOptional = true;
-            } else { 
+            } else {
+                this.needSymbolsCount++;
                 node.letter = letter;
             }
-
             this.list.push(node);
         }
     }
@@ -212,6 +231,12 @@ var MaskedInput = (function () {
      * @var {rexp?}
      */
     ParsedMask.prototype.allow = null;
+    
+    /**
+     * Количество символов необходимых для завершения маски
+     * @var {int}
+     */
+    ParsedMask.prototype.needSymbolsCount = 0;
 
     /**
      * Разобранная маска
@@ -219,6 +244,12 @@ var MaskedInput = (function () {
      */
     ParsedMask.prototype.list = null;
     
+    /**
+     * Данные, прилепленные к маске
+     * @var {object?}
+     */
+    ParsedMask.prototype.data = null;
+
     /**
      * Форматируем маску
      * @var text
@@ -236,6 +267,7 @@ var MaskedInput = (function () {
         var result = '';
         var optionals = [];
         var source = text;
+        var symbolsCount = 0;
         
         if (text.length) {
             // текст есть - маскируем его
@@ -267,6 +299,7 @@ var MaskedInput = (function () {
                         if (this.allow.test(letter)) {
                             result += letter;
                             matching = false;
+                            symbolsCount++;
                         } else {
                             // ошибка заполенения маски: ошибочный символ
                             return null;
@@ -274,6 +307,7 @@ var MaskedInput = (function () {
                     } else if (node.letter && node.letter == letter) {
                         result += letter;
                         matching = false;
+                        symbolsCount++;
                     } else {
                         // ошибка заполнения маски
                         return null;
@@ -281,7 +315,7 @@ var MaskedInput = (function () {
                 }
             }
         }
-        return new ParsedMaskMatch(source, result, optionals, this);
+        return new ParsedMaskMatch(source, result, optionals, this, symbolsCount >= this.needSymbolsCount);
     }
 
     //#endregion
@@ -300,6 +334,7 @@ var MaskedInput = (function () {
         this.data = maskData.data || {};
         this.mask = new ParsedMask({
             mask: maskData.mask,
+            data: maskData.data,
             template: '#',
             templateAllow: /[0-9]/,
             optional: ['+', ' ', '(', ')', '-']
@@ -345,6 +380,8 @@ var MaskedInput = (function () {
                 this.masks.push(new PhoneMask(options.masks[i]));
             }
         }
+        this.onComplete = options.onComplete || noop;
+        this.onIncomplete = options.onIncomplete || noop;
         this.updateValue({
             action: this.actions.SET_TEXT,
             text: this.domElement.value
@@ -352,6 +389,18 @@ var MaskedInput = (function () {
         this.bind();
     }
     
+    /**
+     * Действия, котрые выполяются при завершении маски
+     * @var {function?}
+     */
+    MaskedInput.prototype.onComplete = null;
+    
+    /**
+     * Действия, котрые выполяются при незавешенной маске
+     * @var {function?}
+     */
+    MaskedInput.prototype.onIncomplete = null;
+
     /**
      * Хэлпер раблоты с указателем
      * @var {Caret}
@@ -686,6 +735,10 @@ var MaskedInput = (function () {
         } else {
             this.caret.setPosition(this, this.caretData.original.start);
         }
+        if (this.maskMatch.complete) {
+            return this.onComplete(this.domElement, this.maskMatch.mask.data);
+        }
+        return this.onIncomplete(this.domElement);
     }
 
     /**
@@ -756,7 +809,6 @@ var MaskedInput = (function () {
         } catch (e) {
             console.log(e);
         }
-        //console.log(bound, action, this.value, value);
         return value;
     }
     

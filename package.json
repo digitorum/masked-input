@@ -1,6 +1,6 @@
 {
   "name": "masked-input",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "masked-input",
   "main": "gulpfile.js",
   "author": "Pavel Ladygin <me@digitorum.ru>",

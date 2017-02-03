@@ -16,21 +16,38 @@
 
         <script>
             (function () {
-
                 (new MaskedInput({
                     domElement: document.getElementById('input'),
+                    onComplete: function (domElement, data) {
+                        console.log('complete', data);
+                    },
+                    onIncomplete: function (domElement) {
+                        console.log('incomplete');
+                    },
                     masks: [
                         {
                             mask: '+7 (###) ### ## ##',
-                            data: {}
+                            data: {
+                                lang: 'ru',
+                                phone: '+7'
+                            }
                         },
                         {
                             mask: '+8 (###) ### ## ##',
-                            data: {}
+                            data: {
+                                lang: 'ru',
+                                phone: '+8'
+                            }
+                        },
+                        {
+                            mask: '+7 (###) ### ## ## 111',
+                            data: {
+                                lang: 'ru',
+                                phone: '+7 ended with 111'
+                            }
                         }
                     ]
                 }));
-
             })();
         </script>
     </body>
