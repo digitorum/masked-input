@@ -454,7 +454,8 @@ var MaskedInput = (function () {
         SET_TEXT: 1,
         CUT_TEXT: 2,
         DELETE_PREVIOUS: 3,
-        DELETE_NEXT: 4
+        DELETE_NEXT: 4,
+        RESTORE_CARET: 5
     };
 
     /**
@@ -760,6 +761,10 @@ var MaskedInput = (function () {
                     position = this.maskMatch.mask.attempt(this.value.substr(0, this.caretData.start - 1)).maskedText.length;
                 }
                 break;
+            case this.actions.RESTORE_CARET:
+                // восстановление позиции каретки
+                position = this.maskMatch.mask.attempt(this.value.substr(0, this.caretData.start)).maskedText.length;
+                break;
         }
         this.domElement.value = value;
         if (position !== null) {
@@ -793,8 +798,15 @@ var MaskedInput = (function () {
                 this.value = value;
                 this.maskMatch = maskMatch;
                 // фикс для ie в виду невозможности отменить события
+                // todo: ошибки при быстром вводе. промахи с позиционированем каретки из-за отложенной обработки
                 setTimeout(function () {
                     that.applyMaskValue(maskMatch, action);
+                }, 0);
+            } else {
+                setTimeout(function () {
+                    that.applyMaskValue(that.maskMatch, {
+                        action: that.actions.RESTORE_CARET
+                    });
                 }, 0);
             }
         } else {
