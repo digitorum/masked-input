@@ -791,23 +791,22 @@ var MaskedInput = (function () {
         if (value) {
             var maskMatch = this.findMaskMatch(value);
             
-            if (e && e.preventDefault) {
-                e.preventDefault();
+            if (e) {
+                if (e.preventDefault) {
+                    e.preventDefault();
+                } else {
+                    event.returnValue = false;
+                }
             }
+            
             if (maskMatch) {
                 this.value = value;
                 this.maskMatch = maskMatch;
-                // фикс для ie в виду невозможности отменить события
-                // todo: ошибки при быстром вводе. промахи с позиционированем каретки из-за отложенной обработки
-                setTimeout(function () {
-                    that.applyMaskValue(maskMatch, action);
-                }, 0);
+                this.applyMaskValue(maskMatch, action);
             } else {
-                setTimeout(function () {
-                    that.applyMaskValue(that.maskMatch, {
-                        action: that.actions.RESTORE_CARET
-                    });
-                }, 0);
+                this.applyMaskValue(that.maskMatch, {
+                    action: that.actions.RESTORE_CARET
+                });
             }
         } else {
             this.value = value;
