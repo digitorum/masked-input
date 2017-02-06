@@ -795,7 +795,7 @@ var MaskedInput = (function () {
                 if (e.preventDefault) {
                     e.preventDefault();
                 } else {
-                    event.returnValue = false;
+                    e.returnValue = false;
                 }
             }
             
