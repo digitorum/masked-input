@@ -94,24 +94,25 @@ var MaskedInput = (function () {
         var start, stop;
         var opts = input.maskMatch ? input.maskMatch.optionalSymbols : [];
         var data = new CaretData();
+        var domElement = input.domElement;
 
-        if (input.domElement.setSelectionRange) {
-            start = input.domElement.selectionStart;
-            stop = input.domElement.selectionEnd;
-        } else if (document.selection) {
-            var range = document.selection.createRange();
+        if (domElement.setSelectionRange) {
+            start = domElement.selectionStart;
+            stop = domElement.selectionEnd;
+        } else if (document.selection && domElement.createTextRange) {
+            var documentRange = document.selection.createRange();
 
-            if (range.parentElement() === input) {
-                var bookmark = range.getBookmark();
-                var range = input.createTextRange();
-                range.moveToBookmark(bookmark);
+            if (documentRange.parentElement() === domElement) {
+                var range = domElement.createTextRange();
+                range.moveToBookmark(documentRange.getBookmark());
                 var length = range.text.length;
+
                 range.collapse(true);
-                range.moveStart('character', -input.value.length);
+                range.moveStart('character', -domElement.value.length);
                 start = range.text.length;
                 stop = start + length;
             }
-        } else { 
+        } else {
             throw "not implemented";
         }
         data.original.start = start;
@@ -131,7 +132,7 @@ var MaskedInput = (function () {
         if (input.domElement.setSelectionRange) {
             input.domElement.focus();
             input.domElement.setSelectionRange(position, position);
-        } else if (input.createTextRange) {
+        } else if (input.domElement.createTextRange) {
             var range = input.domElement.createTextRange();
             
             range.collapse(true);
@@ -675,7 +676,7 @@ var MaskedInput = (function () {
         // TODO: обработать навигацию (нажитие клавиш влево-вправо)
         this.updateValue({
             action: this.actions.INSERT_TEXT,
-            text: String.fromCharCode(e.charCode)
+            text: String.fromCharCode(e.charCode || e.keyCode)
         }, e);
     };
 
@@ -738,7 +739,7 @@ var MaskedInput = (function () {
     MaskedInput.prototype.applyMaskValue = function (maskMatch, action) {
         var value = maskMatch.maskedText;
         var position = null;
-
+        
         switch (action.action) {
             case this.actions.SET_TEXT:
             case this.actions.INSERT_TEXT:
@@ -779,6 +780,7 @@ var MaskedInput = (function () {
      */
     MaskedInput.prototype.updateValue = function (action, e) {
         var value = this.getNewValue(action);
+        var that = this;
         
         // TODO: маска должна понимать пустые значения
         if (value) {
@@ -790,7 +792,10 @@ var MaskedInput = (function () {
             if (maskMatch) {
                 this.value = value;
                 this.maskMatch = maskMatch;
-                this.applyMaskValue(maskMatch, action);
+                // фикс для ie в виду невозможности отменить события
+                setTimeout(function () {
+                    that.applyMaskValue(maskMatch, action);
+                }, 0);
             }
         } else {
             this.value = value;
@@ -837,6 +842,7 @@ var MaskedInput = (function () {
                     }
                     break;
             }
+            console.log(action.action, value, bound.start, bound.stop);
         } catch (e) {
             console.log(e);
         }
